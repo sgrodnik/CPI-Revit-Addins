@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using System.Windows.Media.Imaging;
 
 namespace CPI_Sheets_Updater {
@@ -15,7 +16,6 @@ namespace CPI_Sheets_Updater {
         static readonly string AddInPath = typeof(App).Assembly.Location;
         static readonly string ButtonIconsFolder = Path.GetDirectoryName(AddInPath);
         static void AddRibbonPanel(UIControlledApplication application) {
-                        
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("53 ЦПИ");
             string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
             PushButtonData pbData = new PushButtonData(
@@ -134,9 +134,31 @@ namespace CPI_Sheets_Updater {
                 //filtering the sheets from the affected group
                 FilteredElementCollector filter = new FilteredElementCollector(doc);
                 var viewSheets = filter.OfClass(typeof(ViewSheet)).WhereElementIsNotElementType().ToElements();
-                var sheets = from sheet in viewSheets
-                             where combinations.Contains(sheet.LookupParameter("CPI_Группирование видов").AsString() + sheet.LookupParameter("ADSK_Назначение вида").AsString())
-                             select sheet;
+                var sheets = (from sheet in viewSheets
+                              where combinations.Contains(sheet.LookupParameter("CPI_Группирование видов").AsString() + sheet.LookupParameter("ADSK_Назначение вида").AsString())
+                              select sheet).ToList();
+
+                if (doc.IsWorkshared) {
+                    string username = doc.Application.Username;
+                    var occupiedSheets = new Dictionary<string, List<ViewSheet>>();
+                    foreach (ViewSheet sheet in sheets) {
+                        string editor = sheet.get_Parameter(BuiltInParameter.EDITED_BY).AsString();
+                        if (editor == "" || editor == username) { continue; }
+                        if (!occupiedSheets.ContainsKey(editor)) { occupiedSheets.Add(editor, new List<ViewSheet>()); }
+                        occupiedSheets[editor].Add(sheet);
+                    }
+                    if (occupiedSheets.Count() > 0) {
+                        var s = "Листы, занятые другими пользователями, не будут обновлены.\n"
+                            + string.Join("\n", occupiedSheets.Select(p => {
+                                return $"Пользователь '{p.Key}' владеет листами:" +
+                                $"{string.Join("", p.Value.Select(el => $"\n    {el.SheetNumber}"))}";
+                        }).ToArray());
+                        MessageBox.Show(s, "Предупреждение CPI Sheets Updater");
+                        foreach (var sheet in occupiedSheets.Values.SelectMany(x => x).ToList()) {
+                            sheets.Remove(sheet);
+                        }
+                    }
+                }
 
                 //creating a dict {intPart: sheets}
                 var sheetsByInt = new Dictionary<int, List<ViewSheet>>();
