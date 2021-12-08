@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<RevitAddIns>
+<AddIn Type="Application">
+                <Name>CPI Sheets Updater</Name>
+                <Assembly>CPI Sheets Updater.dll</Assembly>
+                <AddInId>0d6aebb3-b1c5-46a5-94ca-04a876559954</AddInId>
+                <FullClassName>CPI_Sheets_Updater.App</FullClassName>
+                <VendorId>SGrodnik</VendorId>
+                <VendorDescription>SGrodnik at 53CPI</VendorDescription>
+</AddIn>
+</RevitAddIns>

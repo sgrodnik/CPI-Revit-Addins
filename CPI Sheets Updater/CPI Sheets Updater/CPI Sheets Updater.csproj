@@ -61,5 +61,10 @@
     <Resource Include="Resources\toggle-off.png" />
     <Resource Include="Resources\toggle-on.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="CPI Sheets Updater.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
