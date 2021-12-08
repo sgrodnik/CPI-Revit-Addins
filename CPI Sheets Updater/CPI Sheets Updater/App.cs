@@ -259,7 +259,7 @@ namespace CPI_Sheets_Updater {
         }
 
         public string GetUpdaterName() {
-            return "CPI Sheets Updater v0.1.0";
+            return "CPI Sheets Updater v0.1.1";
         }
     }
 
@@ -278,11 +278,11 @@ namespace CPI_Sheets_Updater {
                 RibbonPanel panel = commandData.Application.GetRibbonPanels()[4];
                 PushButton button = GetRibbonItemByName(commandData.Application, "53 ЦПИ", "cmdSwitchUpdater") as PushButton;
                 if (SheetUpdater.UpdaterIsEnabledFlag) {  // change state from Enable to Disable
-                    button.LargeImage = App.imageOn;
+                    button.LargeImage = App.imageOff;
                     SheetUpdater.UpdaterIsEnabledFlag = false;
                     button.ItemText = "Запустить" + System.Environment.NewLine + "Sheets Updater";
                 } else {
-                    button.LargeImage = App.imageOff;
+                    button.LargeImage = App.imageOn;
                     SheetUpdater.UpdaterIsEnabledFlag = true;
                     button.ItemText = "Остановить" + System.Environment.NewLine + "Sheets Updater";
                 }
