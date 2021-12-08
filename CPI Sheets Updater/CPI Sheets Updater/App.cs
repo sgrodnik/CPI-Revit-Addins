@@ -13,28 +13,20 @@ using System.Windows.Media.Imaging;
 namespace CPI_Sheets_Updater {
     [Transaction(TransactionMode.Manual)]
     public class App : IExternalApplication {
-        static readonly string AddInPath = typeof(App).Assembly.Location;
-        static readonly string ButtonIconsFolder = Path.GetDirectoryName(AddInPath);
+        public static BitmapImage imageOn = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-on.png"));
+        public static BitmapImage imageOff = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-off.png"));
         static void AddRibbonPanel(UIControlledApplication application) {
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("53 ЦПИ");
             string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
+            
             PushButtonData pbData = new PushButtonData(
-                "cmdDisableUpdater",
+                "cmdSwitchUpdater",
                 "Остановить" + System.Environment.NewLine + "Sheets Updater",
                 thisAssemblyPath,
-                "CPI_Sheets_Updater.DisableUpdater");
+                "CPI_Sheets_Updater.SwitchUpdater");
             PushButton pb = ribbonPanel.AddItem(pbData) as PushButton;
             pb.ToolTip = "Тooltip is coming soon";
-            pb.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "icon.png"), UriKind.Absolute));
-
-            PushButtonData pbData2 = new PushButtonData(
-                "cmdEnableUpdater",
-                "Запустить" + System.Environment.NewLine + "Sheets Updater",
-                thisAssemblyPath,
-                "CPI_Sheets_Updater.EnableUpdater");
-            PushButton pb2 = ribbonPanel.AddItem(pbData2) as PushButton;
-            pb2.ToolTip = "Тooltip is coming soon";
-            pb2.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "icon.png"), UriKind.Absolute));
+            pb.LargeImage = imageOn;
         }
         public Result OnShutdown(UIControlledApplication application) {
             SheetUpdater updater = new SheetUpdater(application.ActiveAddInId);
@@ -152,7 +144,7 @@ namespace CPI_Sheets_Updater {
                             + string.Join("\n", occupiedSheets.Select(p => {
                                 return $"Пользователь '{p.Key}' владеет листами:" +
                                 $"{string.Join("", p.Value.Select(el => $"\n    {el.SheetNumber}"))}";
-                        }).ToArray());
+                            }).ToArray());
                         MessageBox.Show(s, "Предупреждение CPI Sheets Updater");
                         foreach (var sheet in occupiedSheets.Values.SelectMany(x => x).ToList()) {
                             sheets.Remove(sheet);
@@ -270,33 +262,30 @@ namespace CPI_Sheets_Updater {
             return "CPI Sheets Updater v0.1.0";
         }
     }
-    [Transaction(TransactionMode.Manual)]
-    public class DisableUpdater : IExternalCommand {
-        public Result Execute(
-                ExternalCommandData commandData,
-                ref string message,
-                ElementSet elements) {
 
-            try {
-                SheetUpdater.UpdaterIsEnabledFlag = false;
-                //TaskDialog.Show("DisableUpdater", "Средство обновления CPI Sheets Updater остановлено");
-                return Result.Succeeded;
-            } catch (Exception ex) {
-                message = ex.Message;
-                return Result.Failed;
-            }
+    [Transaction(TransactionMode.Manual)]
+    public class SwitchUpdater : IExternalCommand {
+
+        public RibbonItem GetRibbonItemByName(UIApplication app, String panelName, String itemName) {
+            RibbonPanel panelRibbon = null;
+            foreach (RibbonPanel item in app.GetRibbonPanels()) { if (panelName == item.Name) { panelRibbon = item; } }
+            foreach (RibbonItem item in panelRibbon.GetItems()) { if (itemName == item.Name) { return item; } }
+            return null;
         }
-    }
-    [Transaction(TransactionMode.Manual)]
-    public class EnableUpdater : IExternalCommand {
-        public Result Execute(
-                ExternalCommandData commandData,
-                ref string message,
-                ElementSet elements) {
 
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) {
             try {
-                SheetUpdater.UpdaterIsEnabledFlag = true;
-                //TaskDialog.Show("EnableUpdater", "Средство обновления CPI Sheets Updater запущено");
+                RibbonPanel panel = commandData.Application.GetRibbonPanels()[4];
+                PushButton button = GetRibbonItemByName(commandData.Application, "53 ЦПИ", "cmdSwitchUpdater") as PushButton;
+                if (SheetUpdater.UpdaterIsEnabledFlag) {  // change state from Enable to Disable
+                    button.LargeImage = App.imageOn;
+                    SheetUpdater.UpdaterIsEnabledFlag = false;
+                    button.ItemText = "Запустить" + System.Environment.NewLine + "Sheets Updater";
+                } else {
+                    button.LargeImage = App.imageOff;
+                    SheetUpdater.UpdaterIsEnabledFlag = true;
+                    button.ItemText = "Остановить" + System.Environment.NewLine + "Sheets Updater";
+                }
                 return Result.Succeeded;
             } catch (Exception ex) {
                 message = ex.Message;
