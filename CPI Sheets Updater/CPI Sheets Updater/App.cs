@@ -3,7 +3,6 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -18,7 +17,7 @@ namespace CPI_Sheets_Updater {
         static void AddRibbonPanel(UIControlledApplication application) {
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("53 ЦПИ");
             string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
-            
+
             PushButtonData pbData = new PushButtonData(
                 "cmdSwitchUpdater",
                 "Остановить" + System.Environment.NewLine + "Sheets Updater",
@@ -100,9 +99,17 @@ namespace CPI_Sheets_Updater {
                         if (text.Length > 0) {
                             lst.Add(text);
                         } else {
-                            lst.Add(ssi.Name);
+                            List<string> arr = ssi.Name.Split().ToList();
+                            if (arr.GetRange(arr.Count - 1, 1)[0].Contains("/")) { //if (revitVersion >= 2022 && ssi.SegmentIndex >= 0)
+                                lst.Add(String.Join(" ", arr.GetRange(0, arr.Count - 1)));
+                            } else {
+                                lst.Add(ssi.Name);
+                            }
                         }
                     }
+                    HashSet<String> uniques = new HashSet<String>(lst);
+                    lst = uniques.ToList();
+                    lst.Sort();
                     var specName = String.Join("\n", lst);
                     ownerSheet.LookupParameter("CPI_ВС Наименование спецификации").Set(specName);
 
@@ -275,7 +282,6 @@ namespace CPI_Sheets_Updater {
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) {
             try {
-                RibbonPanel panel = commandData.Application.GetRibbonPanels()[4];
                 PushButton button = GetRibbonItemByName(commandData.Application, "53 ЦПИ", "cmdSwitchUpdater") as PushButton;
                 if (SheetUpdater.UpdaterIsEnabledFlag) {  // change state from Enable to Disable
                     button.LargeImage = App.imageOff;
