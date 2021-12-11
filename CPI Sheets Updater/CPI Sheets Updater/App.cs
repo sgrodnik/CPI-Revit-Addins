@@ -245,19 +245,15 @@ namespace CPI_Sheets_Updater {
 
         public (string intPart, string fracPart) GetParts(ViewSheet sheet) {
             String numStr = sheet.LookupParameter("Номер листа").AsString();
-            var numArr = numStr.Split(' ', '.');
+            var separators = new char[] { ' ', '-', '_', '/' };
+            String lastPart = numStr.Split(separators).Last();
             String intPart;
             String fracPart = "";
-            if (numStr.Contains(" ") && numStr.Contains(".")) {
-                intPart = numArr[1];
-                fracPart = numArr[2];
-            } else if (numStr.Contains(" ")) {
-                intPart = numArr[1];
-            } else if (numStr.Contains(".")) {
-                intPart = numArr[0];
-                fracPart = numArr[1];
+            if (numStr.Contains(".")) {
+                intPart = lastPart.Split('.')[0];
+                fracPart = lastPart.Split('.')[1];
             } else {
-                intPart = numStr;
+                intPart = lastPart;
             }
             intPart = Regex.Replace(intPart, @"[^\d]", string.Empty);
             fracPart = Regex.Replace(fracPart, @"[^\d]", string.Empty);
