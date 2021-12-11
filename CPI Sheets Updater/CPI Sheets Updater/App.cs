@@ -95,10 +95,13 @@ namespace CPI_Sheets_Updater {
                     var ssis = pair.Value;
                     var lst = new List<string>();
                     foreach (var ssi in ssis) {
+                        if (1 == doc.GetElement(ssi.ScheduleId).LookupParameter("CPI_Исключить из ВС")?.AsInteger()) { continue; }
                         var text = (doc.GetElement(ssi.ScheduleId) as ViewSchedule).GetTableData().GetSectionData(SectionType.Header).GetCellText(0, 0);
                         if (text.Length > 0) {
+                            if (text.Contains("Экспликация помещений")) { continue; }
                             lst.Add(text);
                         } else {
+                            if (ssi.Name.Contains("Экспликация помещений")) { continue; }
                             List<string> arr = ssi.Name.Split().ToList();
                             if (arr.GetRange(arr.Count - 1, 1)[0].Contains("/")) { //if (revitVersion >= 2022 && ssi.SegmentIndex >= 0)
                                 lst.Add(String.Join(" ", arr.GetRange(0, arr.Count - 1)));
@@ -112,6 +115,8 @@ namespace CPI_Sheets_Updater {
                     lst.Sort();
                     var specName = String.Join("\n", lst);
                     ownerSheet.LookupParameter("CPI_ВС Наименование спецификации").Set(specName);
+
+                    if (specName == "") { continue; }
 
                     if (!sheetsBySpecName.ContainsKey(specName)) {
                         sheetsBySpecName.Add(specName, new List<ViewSheet>());
@@ -190,6 +195,11 @@ namespace CPI_Sheets_Updater {
 
                         var specName = sheet.LookupParameter("CPI_ВС Наименование спецификации").AsString();
                         if (null == specName) { continue; }
+                        if ("" == specName) {
+                            sheet.LookupParameter("CPI_ВС Номер листа").Set("");
+                            sheet.LookupParameter("CPI_ВС Примечание").Set("");
+                            continue;
+                        }
                         if (sheetsBySpecName.ContainsKey(specName)) {
                             var coSheetsForVS = sheetsBySpecName[specName];
                             var fracPartOfTheLastSheetForVS = GetParts(coSheetsForVS.Last()).fracPart;
