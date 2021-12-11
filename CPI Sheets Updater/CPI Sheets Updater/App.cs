@@ -129,8 +129,8 @@ namespace CPI_Sheets_Updater {
                 HashSet<String> combinations = new HashSet<String>();
                 foreach (ViewSheet sheet in modSheets) {
                     //ViewSheet sheet = doc.GetElement(elId) as ViewSheet;
-                    String group = sheet.LookupParameter("CPI_Группирование видов").AsString();
-                    String purpose = sheet.LookupParameter("ADSK_Назначение вида").AsString();
+                    String group = sheet.LookupParameter("CPI_Группирование видов")?.AsString() ?? "-";
+                    String purpose = sheet.LookupParameter("ADSK_Назначение вида")?.AsString() ?? "-";
                     String group_purpose = group + purpose;
                     combinations.Add(group_purpose);
                 }
@@ -139,7 +139,8 @@ namespace CPI_Sheets_Updater {
                 FilteredElementCollector filter = new FilteredElementCollector(doc);
                 var viewSheets = filter.OfClass(typeof(ViewSheet)).WhereElementIsNotElementType().ToElements();
                 var sheets = (from sheet in viewSheets
-                              where combinations.Contains(sheet.LookupParameter("CPI_Группирование видов").AsString() + sheet.LookupParameter("ADSK_Назначение вида").AsString())
+                              where combinations.Contains((sheet.LookupParameter("CPI_Группирование видов")?.AsString() ?? "-")
+                                                        + (sheet.LookupParameter("ADSK_Назначение вида")?.AsString() ?? "-"))
                               select sheet).ToList();
 
                 if (doc.IsWorkshared) {
