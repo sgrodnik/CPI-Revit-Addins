@@ -56,9 +56,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\toggle-off.png" />
     <Resource Include="Resources\toggle-on.png" />
   </ItemGroup>
@@ -66,6 +63,12 @@
     <None Include="CPI Sheets Updater.addin">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\toggle-dead-16.png" />
+    <Resource Include="Resources\toggle-dead.png" />
+    <Resource Include="Resources\toggle-off-16.png" />
+    <Resource Include="Resources\toggle-on-16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
