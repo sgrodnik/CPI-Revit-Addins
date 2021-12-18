@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -12,21 +13,56 @@ using System.Windows.Media.Imaging;
 namespace CPI_Sheets_Updater {
     [Transaction(TransactionMode.Manual)]
     public class App : IExternalApplication {
-        public static BitmapImage imageOn = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-on.png"));
-        public static BitmapImage imageOff = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-off.png"));
+        public static Dictionary<Document, bool> UpdaterIsAvailable = new Dictionary<Document, bool>();
+        private static string[] paramNames = {
+                "CPI_Количество листов",
+                "CPI_ВС Наименование спецификации",
+                "CPI_Группирование видов",
+                "ADSK_Назначение вида",
+                "CPI_Номер листа",
+                "CPI_ВЧ Номер листа",
+                "CPI_ВЧ Примечание",
+                "CPI_ВС Номер листа",
+                "CPI_ВС Примечание",
+            };
+        public static PushButton button;
+        public static bool UpdaterIsEnabledFlag = true;
+
         static void AddRibbonPanel(UIControlledApplication application) {
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("53 ЦПИ");
             string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
 
             PushButtonData pbData = new PushButtonData(
                 "cmdSwitchUpdater",
-                "Остановить" + System.Environment.NewLine + "Sheets Updater",
+                "Остановить" + Environment.NewLine + "Sheets Updater",
                 thisAssemblyPath,
                 "CPI_Sheets_Updater.SwitchUpdater");
-            PushButton pb = ribbonPanel.AddItem(pbData) as PushButton;
-            pb.ToolTip = "Тooltip is coming soon";
-            pb.LargeImage = imageOn;
+            button = ribbonPanel.AddItem(pbData) as PushButton;
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://bit.do/Sheets-Updater"));
+            buttonOn();
         }
+
+        public static void buttonOn() {
+            button.LargeImage = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-on.png"));
+            button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-on-16.png"));
+            button.ItemText = "Остановить" + Environment.NewLine + "Sheets Updater";
+            button.ToolTip = "Следит за обновлением параметра Номер листа и заполняет параметры для ведомости чертежей и ведомости спецификаций для смежных листов (с теми же значениями параметров CPI_Группирование видов и ADSK_Назначение вида)";
+        }
+
+        public static void buttonOff() {
+            button.LargeImage = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-off.png"));
+            button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-off-16.png"));
+            button.ItemText = "Запустить" + Environment.NewLine + "Sheets Updater";
+            button.ToolTip = "Следит за обновлением параметра Номер листа и заполняет параметры для ведомости чертежей и ведомости спецификаций для смежных листов (с теми же значениями параметров CPI_Группирование видов и ADSK_Назначение вида)";
+        }
+
+        public static void buttonDead() {
+            button.LargeImage = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-dead.png"));
+            button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-dead-16.png"));
+            button.ItemText = "Перезапустить" + Environment.NewLine + "Sheets Updater";
+            button.ToolTip = "Параметры не найдены";
+        }
+
         public Result OnShutdown(UIControlledApplication application) {
             SheetUpdater updater = new SheetUpdater(application.ActiveAddInId);
             UpdaterRegistry.UnregisterUpdater(updater.GetUpdaterId());
@@ -36,7 +72,53 @@ namespace CPI_Sheets_Updater {
         public Result OnStartup(UIControlledApplication application) {
             AddRibbonPanel(application);
             RegisterUpdater(application);
+            application.ViewActivated += new EventHandler<Autodesk.Revit.UI.Events.ViewActivatedEventArgs>(App_ViewActivated);
             return Result.Succeeded;
+        }
+
+        void App_ViewActivated(object sender, Autodesk.Revit.UI.Events.ViewActivatedEventArgs e) {
+            var doc = e.CurrentActiveView.Document;
+            if (!UpdaterIsAvailable.ContainsKey(doc)) { UpdaterIsAvailable.Add(doc, CheckDoc(doc)); }
+            //if (UpdaterIsAvailableInDoc[doc]) { return; }
+            var flag = UpdaterIsAvailable[doc];
+            if (flag) {
+                if (UpdaterIsEnabledFlag) {
+                    buttonOn();
+                } else {
+                    buttonOff();
+                }
+            } else {
+                buttonDead();
+            }
+        }
+
+        public static bool CheckDoc(Document doc) {
+            foreach (var name in paramNames) {
+                if (!SharedParameterIsBinded(doc, name, BuiltInCategory.OST_Sheets)) {
+                    //s += $"\nНе найден параметр {name}";
+                    return false;
+                }
+            }
+            return true;
+        }
+        private static bool SharedParameterIsBinded(Document doc, string paraName, BuiltInCategory boundCategory) {
+            try {
+                BindingMap bindingMap = doc.ParameterBindings;
+                DefinitionBindingMapIterator bindingMapIter = bindingMap.ForwardIterator();
+                while (bindingMapIter.MoveNext()) {
+                    if (bindingMapIter.Key.Name.Equals(paraName)) {
+                        ElementBinding binding = bindingMapIter.Current as ElementBinding;
+                        CategorySet categories = binding.Categories;
+                        foreach (Category category in categories) {
+                            if (category.Id.IntegerValue.Equals((int)boundCategory)) { return true; }
+                        }
+                    }
+                }
+            } catch (Exception) {
+                return false;
+            }
+
+            return false;
         }
 
         private void RegisterUpdater(UIControlledApplication application) {
@@ -46,7 +128,6 @@ namespace CPI_Sheets_Updater {
 
             // Change Scope = any ViewSheet element
             ElementClassFilter SheetFilter = new ElementClassFilter(typeof(ViewSheet));
-            //ElementClassFilter ViewScheduleFilter = new ElementClassFilter(typeof(ViewSchedule));
 
             // Change type = parameter + addition
             ElementId paramId = new ElementId(BuiltInParameter.SHEET_NUMBER);
@@ -57,14 +138,13 @@ namespace CPI_Sheets_Updater {
     public class SheetUpdater : IUpdater {
         static AddInId m_appId;
         static UpdaterId m_updaterId;
-        public static bool UpdaterIsEnabledFlag = true;
         public SheetUpdater(AddInId id) {
             m_appId = id;
             m_updaterId = new UpdaterId(m_appId, new Guid("c99a8414-1b2d-41e5-980b-1a7115bcfb7c"));
         }
 
         public void Execute(UpdaterData data) {
-            if (!UpdaterIsEnabledFlag) { return; }
+            if (!App.UpdaterIsEnabledFlag) { return; }
             try {
                 Document doc = data.GetDocument();
                 var modSheets = new List<ViewSheet>();
@@ -215,9 +295,13 @@ namespace CPI_Sheets_Updater {
                         }
                     }
                 }
-
             } catch (Exception ex) {
-                UpdaterIsEnabledFlag = false;
+                var app = data.GetDocument().Application;
+                var uiApp = new UIApplication(app);
+                App.UpdaterIsEnabledFlag = false;
+                App.buttonDead();
+                App.button.ToolTip = "Непредвиденная ошибка";
+
                 TaskDialog mainDialog = new TaskDialog("Ошибка");
                 mainDialog.MainInstruction = "Средство обновления CPI Sheets Updater остановлено";
                 mainDialog.ExpandedContent = ex.ToString();
@@ -228,7 +312,8 @@ namespace CPI_Sheets_Updater {
                 mainDialog.DefaultButton = TaskDialogResult.Close;
                 TaskDialogResult tResult = mainDialog.Show();
                 if (TaskDialogResult.CommandLink1 == tResult) {
-                    UpdaterIsEnabledFlag = true;
+                    App.buttonOn();
+                    App.UpdaterIsEnabledFlag = true;
                 }
             }
         }
@@ -249,7 +334,7 @@ namespace CPI_Sheets_Updater {
             String lastPart = numStr.Split(separators).Last();
             String intPart;
             String fracPart = "";
-            if (numStr.Contains(".")) {
+            if (lastPart.Contains(".")) {
                 intPart = lastPart.Split('.')[0];
                 fracPart = lastPart.Split('.')[1];
             } else {
@@ -273,14 +358,14 @@ namespace CPI_Sheets_Updater {
         }
 
         public string GetUpdaterName() {
-            return "CPI Sheets Updater v0.1.1";
+            return "CPI Sheets Updater v0.1.2";
         }
     }
 
     [Transaction(TransactionMode.Manual)]
     public class SwitchUpdater : IExternalCommand {
 
-        public RibbonItem GetRibbonItemByName(UIApplication app, String panelName, String itemName) {
+        public static RibbonItem GetRibbonItemByName(UIApplication app, String panelName, String itemName) {
             RibbonPanel panelRibbon = null;
             foreach (RibbonPanel item in app.GetRibbonPanels()) { if (panelName == item.Name) { panelRibbon = item; } }
             foreach (RibbonItem item in panelRibbon.GetItems()) { if (itemName == item.Name) { return item; } }
@@ -289,15 +374,26 @@ namespace CPI_Sheets_Updater {
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) {
             try {
-                PushButton button = GetRibbonItemByName(commandData.Application, "53 ЦПИ", "cmdSwitchUpdater") as PushButton;
-                if (SheetUpdater.UpdaterIsEnabledFlag) {  // change state from Enable to Disable
-                    button.LargeImage = App.imageOff;
-                    SheetUpdater.UpdaterIsEnabledFlag = false;
-                    button.ItemText = "Запустить" + System.Environment.NewLine + "Sheets Updater";
+                var doc = commandData.Application.ActiveUIDocument.Document;
+                if (App.UpdaterIsAvailable[doc]) {
+                    if (App.UpdaterIsEnabledFlag) {  // change state from Enable to Disable
+                        App.buttonOff();
+                        App.UpdaterIsEnabledFlag = false;
+                    } else {
+                        App.buttonOn();
+                        App.UpdaterIsEnabledFlag = true;
+                    }
                 } else {
-                    button.LargeImage = App.imageOn;
-                    SheetUpdater.UpdaterIsEnabledFlag = true;
-                    button.ItemText = "Остановить" + System.Environment.NewLine + "Sheets Updater";
+                    if (App.CheckDoc(doc)) {
+                        App.UpdaterIsAvailable[doc] = true;
+                        if (App.UpdaterIsEnabledFlag) {  // updater already is Enabled
+                            App.buttonOn();
+                        } else {
+                            App.buttonOff();
+                        }
+                    } else {
+                        App.buttonDead();
+                    }
                 }
                 return Result.Succeeded;
             } catch (Exception ex) {
