@@ -138,6 +138,7 @@ namespace CPI_Sheets_Updater {
     public class SheetUpdater : IUpdater {
         static AddInId m_appId;
         static UpdaterId m_updaterId;
+        private Dictionary<ElementId, List<ScheduleSheetInstance>> _ssisByOwner;
         public SheetUpdater(AddInId id) {
             m_appId = id;
             m_updaterId = new UpdaterId(m_appId, new Guid("c99a8414-1b2d-41e5-980b-1a7115bcfb7c"));
@@ -160,17 +161,17 @@ namespace CPI_Sheets_Updater {
 
                 //creating a dict {Owner: ScheduleSheetInstances}
                 var SSInstances = new FilteredElementCollector(doc).OfClass(typeof(ScheduleSheetInstance)).WhereElementIsNotElementType().ToElements();
-                var ssisByOwner = new Dictionary<ElementId, List<ScheduleSheetInstance>>();
+                _ssisByOwner = new Dictionary<ElementId, List<ScheduleSheetInstance>>();
                 foreach (ScheduleSheetInstance ssi in SSInstances) {
                     ElementId ownerId = ssi.OwnerViewId;
-                    if (!ssisByOwner.ContainsKey(ownerId)) {
-                        ssisByOwner.Add(ownerId, new List<ScheduleSheetInstance>());
+                    if (!_ssisByOwner.ContainsKey(ownerId)) {
+                        _ssisByOwner.Add(ownerId, new List<ScheduleSheetInstance>());
                     }
-                    ssisByOwner[ownerId].Add(ssi);
+                    _ssisByOwner[ownerId].Add(ssi);
                 }
                 //creating a dict {specName: sheets}
                 var sheetsBySpecName = new Dictionary<string, List<ViewSheet>>();
-                foreach (KeyValuePair<ElementId, List<ScheduleSheetInstance>> pair in ssisByOwner) {
+                foreach (KeyValuePair<ElementId, List<ScheduleSheetInstance>> pair in _ssisByOwner) {
                     var ownerSheet = doc.GetElement(pair.Key) as ViewSheet;
                     var ssis = pair.Value;
                     var lst = new List<string>();
@@ -275,10 +276,15 @@ namespace CPI_Sheets_Updater {
                         sheet.LookupParameter("CPI_ВЧ Примечание").Set(prim);
 
                         var specName = sheet.LookupParameter("CPI_ВС Наименование спецификации").AsString();
+                        if (!_ssisByOwner.ContainsKey(sheet.Id))
+                        {
+                            specName = "";
+                        }
                         if (null == specName) { continue; }
                         if ("" == specName) {
                             sheet.LookupParameter("CPI_ВС Номер листа").Set("");
                             sheet.LookupParameter("CPI_ВС Примечание").Set("");
+                            sheet.LookupParameter("CPI_ВС Наименование спецификации").Set("");
                             continue;
                         }
                         if (sheetsBySpecName.ContainsKey(specName)) {
