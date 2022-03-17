@@ -27,6 +27,9 @@ namespace CPI_Sheets_Updater {
             };
         public static PushButton button;
         public static bool UpdaterIsEnabledFlag = true;
+        internal static string _buildVersion = "0.1.3";
+        private static string _buildDate = "2022.03.17";
+        private static readonly string VersionInfo = $"Версия {_buildVersion} от {_buildDate}";
 
         static void AddRibbonPanel(UIControlledApplication application) {
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("53 ЦПИ");
@@ -47,6 +50,7 @@ namespace CPI_Sheets_Updater {
             button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-on-16.png"));
             button.ItemText = "Остановить" + Environment.NewLine + "Sheets Updater";
             button.ToolTip = "Следит за обновлением параметра Номер листа и заполняет параметры для ведомости чертежей и ведомости спецификаций для смежных листов (с теми же значениями параметров CPI_Группирование видов и ADSK_Назначение вида)";
+            button.LongDescription = VersionInfo;
         }
 
         public static void buttonOff() {
@@ -54,6 +58,7 @@ namespace CPI_Sheets_Updater {
             button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-off-16.png"));
             button.ItemText = "Запустить" + Environment.NewLine + "Sheets Updater";
             button.ToolTip = "Следит за обновлением параметра Номер листа и заполняет параметры для ведомости чертежей и ведомости спецификаций для смежных листов (с теми же значениями параметров CPI_Группирование видов и ADSK_Назначение вида)";
+            button.LongDescription = VersionInfo;
         }
 
         public static void buttonDead() {
@@ -61,6 +66,7 @@ namespace CPI_Sheets_Updater {
             button.Image = new BitmapImage(new Uri("pack://application:,,,/CPI Sheets Updater;component/Resources/toggle-dead-16.png"));
             button.ItemText = "Перезапустить" + Environment.NewLine + "Sheets Updater";
             button.ToolTip = "Параметры не найдены";
+            button.LongDescription = VersionInfo;
         }
 
         public Result OnShutdown(UIControlledApplication application) {
@@ -468,7 +474,7 @@ namespace CPI_Sheets_Updater {
         }
 
         public string GetUpdaterName() {
-            return "CPI Sheets Updater v0.1.2";
+            return $"CPI Sheets Updater v{App._buildVersion}";
         }
     }
 
